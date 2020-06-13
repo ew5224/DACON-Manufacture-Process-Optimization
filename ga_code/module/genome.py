@@ -90,7 +90,7 @@ class Genome:
             if self.check_time_1 == 28:
                 self.mask_1[:4] = True
             if self.check_time_1 < 28:
-                self.mask_1[self.process_mode_1 - 1] = True
+                self.mask_1[self.process_mode_1] = True
         if self.process_1 == 1:
             self.mask_1[4] = True
             if self.process_time_1 > 98:
@@ -102,7 +102,7 @@ class Genome:
             if self.check_time_2 == 28:
                 self.mask_2[:4] = True
             if self.check_time_2 < 28:
-                self.mask_2[self.process_mode_2 - 1] = True
+                self.mask_2[self.process_mode_2] = True
         if self.process_2 == 1:
             self.mask_2[4] = True
             if self.process_time_2 > 98:
@@ -132,7 +132,7 @@ class Genome:
         net = np.matmul(net, self.w8_1)
         net = self.softmax(net)
         out2 = np.argmax(net)
-        out2 /= 2
+        out2 /= 5
 
         # LINE_B_Event 신경망
         net = np.matmul(inputs, self.w1_2)
@@ -157,7 +157,7 @@ class Genome:
         net = np.matmul(net, self.w8_2)
         net = self.softmax(net)
         out4 = np.argmax(net)
-        out4 /= 2
+        out4 /= 5
 
         return out1, out2, out3, out4
 

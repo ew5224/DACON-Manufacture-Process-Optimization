@@ -33,17 +33,17 @@ class Simulator:
     def cal_schedule_part_1(self, df):
         columns = ["PRT_1", "PRT_2", "PRT_3", "PRT_4"]
         df_set = df[columns]
-        df_out = df_set * 0
+        df_out = df_set * 0  # df_out : 시간에 따른 재고량
 
         p = 0.985
-        dt = pd.Timedelta(days=23)
+        dt = pd.Timedelta(days=23)  # dt = PRT 생산 소요 시간
         end_time = df_out.index[-1]
 
         for time in df_out.index:
-            out_time = time + dt
-            if end_time < out_time:
+            out_time = time + dt  # out_time : 생산 완료 시간
+            if end_time < out_time:  # 전체 만료기간을 넘어갈 때 멈춤
                 break
-            else:
+            else:  # 전체 만료기간 내
                 for column in columns:
                     set_num = df_set.loc[time, column]
                     if set_num > 0:
@@ -72,8 +72,10 @@ class Simulator:
 
         schedule["state"] = 0
         schedule["state"] = schedule[columns[0]].apply(lambda x: self.get_state(x))
-        schedule["state"] = schedule["state"].fillna(method="ffill")
-        schedule["state"] = schedule["state"].fillna(0)
+        schedule["state"] = schedule["state"].fillna(
+            method="ffill"
+        )  # process target id 를 찾는것
+        schedule["state"] = schedule["state"].fillna(0)  # 초기 상태 target id = 없다.
 
         schedule_process = schedule.loc[schedule[columns[0]] == "PROCESS"]
         df_out = schedule.drop(schedule.columns, axis=1)
