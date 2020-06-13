@@ -8,7 +8,9 @@ simulator = Simulator()
 submission_ini = pd.read_csv(
     os.path.join(Path(__file__).resolve().parent, "sample_submission.csv")
 )
-order_ini = pd.read_csv(os.path.join(Path(__file__).resolve().parent, "order.csv"))
+order_ini = pd.read_csv(
+    os.path.join(Path(__file__).resolve().parent, "extended_order.csv")
+)
 
 
 class Genome:
@@ -23,21 +25,32 @@ class Genome:
         self.hidden_layer2 = h2
         self.hidden_layer3 = h3
 
-        # Event 신경망 가중치 생성
-        self.w1 = np.random.randn(input_len, self.hidden_layer1)
-        self.w2 = np.random.randn(self.hidden_layer1, self.hidden_layer2)
-        self.w3 = np.random.randn(self.hidden_layer2, self.hidden_layer3)
-        self.w4 = np.random.randn(self.hidden_layer3, output_len_1)
+        # Event_LINE_A 신경망 가중치 생성
+        self.w1_1 = np.random.randn(input_len, self.hidden_layer1)
+        self.w2_1 = np.random.randn(self.hidden_layer1, self.hidden_layer2)
+        self.w3_1 = np.random.randn(self.hidden_layer2, self.hidden_layer3)
+        self.w4_1 = np.random.randn(self.hidden_layer3, output_len_1)
+        # Event_LINE_B 신경망 가중치 생성
+        self.w1_2 = np.random.randn(input_len, self.hidden_layer1)
+        self.w2_2 = np.random.randn(self.hidden_layer1, self.hidden_layer2)
+        self.w3_2 = np.random.randn(self.hidden_layer2, self.hidden_layer3)
+        self.w4_2 = np.random.randn(self.hidden_layer3, output_len_1)
 
-        # MOL 수량 신경망 가중치 생성
-        self.w5 = np.random.randn(input_len, self.hidden_layer1)
-        self.w6 = np.random.randn(self.hidden_layer1, self.hidden_layer2)
-        self.w7 = np.random.randn(self.hidden_layer2, self.hidden_layer3)
-        self.w8 = np.random.randn(self.hidden_layer3, output_len_2)
+        # LINE_A 수량 신경망 가중치 생성
+        self.w5_1 = np.random.randn(input_len, self.hidden_layer1)
+        self.w6_1 = np.random.randn(self.hidden_layer1, self.hidden_layer2)
+        self.w7_1 = np.random.randn(self.hidden_layer2, self.hidden_layer3)
+        self.w8_1 = np.random.randn(self.hidden_layer3, output_len_2)
 
-        # Event 종류
-        self.mask = np.zeros([5], np.bool)  # 가능한 이벤트 검사용 마스크
-        self.event_map = {
+        # LINE_B 수량 신경망 가중치 생성
+        self.w5_2 = np.random.randn(input_len, self.hidden_layer1)
+        self.w6_2 = np.random.randn(self.hidden_layer1, self.hidden_layer2)
+        self.w7_2 = np.random.randn(self.hidden_layer2, self.hidden_layer3)
+        self.w8_2 = np.random.randn(self.hidden_layer3, output_len_2)
+
+        # LINE_A_Event 종류
+        self.mask_1 = np.zeros([5], np.bool)  # 가능한 이벤트 검사용 마스크
+        self.event_map_1 = {
             0: "CHECK_1",
             1: "CHECK_2",
             2: "CHECK_3",
@@ -45,51 +58,108 @@ class Genome:
             4: "PROCESS",
         }
 
-        self.check_time = (
+        # LINE_B_Event 종류
+        self.mask_2 = np.zeros([5], np.bool)  # 가능한 이벤트 검사용 마스크
+        self.event_map_2 = {
+            0: "CHECK_1",
+            1: "CHECK_2",
+            2: "CHECK_3",
+            3: "CHECK_4",
+            4: "PROCESS",
+        }
+
+        # LINE_A_EVENT_STATUS
+        self.check_time_1 = (
             28  # 28시간 검사를 완료했는지 검사, CHECK Event시 -1, processtime_time >=98 이면 28
         )
-        self.process = 0  # 생산 가능 여부, 0 이면 28 시간 검사 필요
-        self.process_mode = 0  # 생산 물품 번호 1~4, stop시 0
-        self.process_time = 0  # 생산시간이 얼마나 지속되었는지 검사, PROCESS +1, CHANGE +1, 최대 140
+        self.process_1 = 0  # 생산 가능 여부, 0 이면 28 시간 검사 필요
+        self.process_mode_1 = 0  # 생산 물품 번호 1~4, stop시 0
+        self.process_time_1 = 0  # 생산시간이 얼마나 지속되었는지 검사, PROCESS +1, CHANGE +1, 최대 140
 
-    def update_mask(self):
-        self.mask[:] = False
-        if self.process == 0:
-            if self.check_time == 28:
-                self.mask[:4] = True
-            if self.check_time < 28:
-                self.mask[self.process_mode - 1] = True
-        if self.process == 1:
-            self.mask[4] = True
-            if self.process_time > 98:
-                self.mask[:4] = True
+        # LINE_B_EVENT_STATUS
+        self.check_time_2 = (
+            28  # 28시간 검사를 완료했는지 검사, CHECK Event시 -1, processtime_time >=98 이면 28
+        )
+        self.process_2 = 0  # 생산 가능 여부, 0 이면 28 시간 검사 필요
+        self.process_mode_2 = 0  # 생산 물품 번호 1~4, stop시 0
+        self.process_time_2 = 0  # 생산시간이 얼마나 지속되었는지 검사, PROCESS +1, CHANGE +1, 최대 140
+
+    def update_mask_1(self):
+        self.mask_1[:] = False
+        if self.process_1 == 0:
+            if self.check_time_1 == 28:
+                self.mask_1[:4] = True
+            if self.check_time_1 < 28:
+                self.mask_1[self.process_mode_1 - 1] = True
+        if self.process_1 == 1:
+            self.mask_1[4] = True
+            if self.process_time_1 > 98:
+                self.mask_1[:4] = True
+
+    def update_mask_2(self):
+        self.mask_2[:] = False
+        if self.process_2 == 0:
+            if self.check_time_2 == 28:
+                self.mask_2[:4] = True
+            if self.check_time_2 < 28:
+                self.mask_2[self.process_mode_2 - 1] = True
+        if self.process_2 == 1:
+            self.mask_2[4] = True
+            if self.process_time_2 > 98:
+                self.mask_2[:4] = True
 
     def forward(self, inputs):
-        # Event 신경망
-        net = np.matmul(inputs, self.w1)
+        # LINE_A_Event 신경망
+        net = np.matmul(inputs, self.w1_1)
         net = self.linear(net)
-        net = np.matmul(net, self.w2)
+        net = np.matmul(net, self.w2_1)
         net = self.linear(net)
-        net = np.matmul(net, self.w3)
+        net = np.matmul(net, self.w3_1)
         net = self.sigmoid(net)
-        net = np.matmul(net, self.w4)
+        net = np.matmul(net, self.w4_1)
         net = self.softmax(net)
         net += 1
-        net = net * self.mask
-        out1 = self.event_map[np.argmax(net)]
+        net = net * self.mask_1
+        out1 = self.event_map_1[np.argmax(net)]
 
-        # MOL 수량 신경망
-        net = np.matmul(inputs, self.w5)
+        # LINE_A 수량 신경망
+        net = np.matmul(inputs, self.w5_1)
         net = self.linear(net)
-        net = np.matmul(net, self.w6)
+        net = np.matmul(net, self.w6_1)
         net = self.linear(net)
-        net = np.matmul(net, self.w7)
+        net = np.matmul(net, self.w7_1)
         net = self.sigmoid(net)
-        net = np.matmul(net, self.w8)
+        net = np.matmul(net, self.w8_1)
         net = self.softmax(net)
         out2 = np.argmax(net)
         out2 /= 2
-        return out1, out2
+
+        # LINE_B_Event 신경망
+        net = np.matmul(inputs, self.w1_2)
+        net = self.linear(net)
+        net = np.matmul(net, self.w2_2)
+        net = self.linear(net)
+        net = np.matmul(net, self.w3_2)
+        net = self.sigmoid(net)
+        net = np.matmul(net, self.w4_2)
+        net = self.softmax(net)
+        net += 1
+        net = net * self.mask_2
+        out3 = self.event_map_2[np.argmax(net)]
+
+        # LINE_B 수량 신경망
+        net = np.matmul(inputs, self.w5_2)
+        net = self.linear(net)
+        net = np.matmul(net, self.w6_2)
+        net = self.linear(net)
+        net = np.matmul(net, self.w7_2)
+        net = self.sigmoid(net)
+        net = np.matmul(net, self.w8_2)
+        net = self.softmax(net)
+        out4 = np.argmax(net)
+        out4 /= 2
+
+        return out1, out2, out3, out4
 
     def sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
@@ -110,54 +180,99 @@ class Genome:
         self.submission = submission_ini
         self.submission.loc[:, "PRT_1":"PRT_4"] = 0
         for s in range(self.submission.shape[0]):
-            self.update_mask()
+            self.update_mask_1()
+            self.update_mask_2()
             inputs = np.array(
                 order.loc[s // 24 : (s // 24 + 30), "BLK_1":"BLK_4"]
             ).reshape(-1)
             inputs = np.append(inputs, s % 24)
-            out1, out2 = self.forward(inputs)
+            out1, out2, out3, out4 = self.forward(inputs)
 
+            # LINE_A EVENT STATUS UPDATE
             if out1 == "CHECK_1":
-                if self.process == 1:
-                    self.process = 0
-                    self.check_time = 28
-                self.check_time -= 1
-                self.process_mode = 0
-                if self.check_time == 0:
-                    self.process = 1
-                    self.process_time = 0
+                if self.process_1 == 1:
+                    self.process_1 = 0
+                    self.check_time_1 = 28
+                self.check_time_1 -= 1
+                self.process_mode_1 = 0
+                if self.check_time_1 == 0:
+                    self.process_1 = 1
+                    self.process_time_1 = 0
             elif out1 == "CHECK_2":
-                if self.process == 1:
-                    self.process = 0
-                    self.check_time = 28
-                self.check_time -= 1
-                self.process_mode = 1
-                if self.check_time == 0:
-                    self.process = 1
-                    self.process_time = 0
+                if self.process_1 == 1:
+                    self.process_1 = 0
+                    self.check_time_1 = 28
+                self.check_time_1 -= 1
+                self.process_mode_1 = 1
+                if self.check_time_1 == 0:
+                    self.process_1 = 1
+                    self.process_time_1 = 0
             elif out1 == "CHECK_3":
-                if self.process == 1:
-                    self.process = 0
-                    self.check_time = 28
-                self.check_time -= 1
-                self.process_mode = 2
-                if self.check_time == 0:
-                    self.process = 1
-                    self.process_time = 0
+                if self.process_1 == 1:
+                    self.process_1 = 0
+                    self.check_time_1 = 28
+                self.check_time_1 -= 1
+                self.process_mode_1 = 2
+                if self.check_time_1 == 0:
+                    self.process_1 = 1
+                    self.process_time_1 = 0
             elif out1 == "CHECK_4":
-                if self.process == 1:
-                    self.process = 0
-                    self.check_time = 28
-                self.check_time -= 1
-                self.process_mode = 3
-                if self.check_time == 0:
-                    self.process = 1
-                    self.process_time = 0
+                if self.process_1 == 1:
+                    self.process_1 = 0
+                    self.check_time_1 = 28
+                self.check_time_1 -= 1
+                self.process_mode_1 = 3
+                if self.check_time_1 == 0:
+                    self.process_1 = 1
+                    self.process_time_1 = 0
             elif out1 == "PROCESS":
-                self.process_time += 1
-                if self.process_time == 140:
-                    self.process = 0
-                    self.check_time = 28
+                self.process_time_1 += 1
+                if self.process_time_1 == 140:
+                    self.process_1 = 0
+                    self.check_time_1 = 28
+
+            # LINE_B EVENT STATUS UPDATE
+            if out3 == "CHECK_1":
+                if self.process_2 == 1:
+                    self.process_2 = 0
+                    self.check_time_2 = 28
+                self.check_time_2 -= 1
+                self.process_mode_2 = 0
+                if self.check_time_2 == 0:
+                    self.process_2 = 1
+                    self.process_time_2 = 0
+            elif out3 == "CHECK_2":
+                if self.process_2 == 1:
+                    self.process_2 = 0
+                    self.check_time_2 = 28
+                self.check_time_2 -= 1
+                self.process_mode_2 = 1
+                if self.check_time_2 == 0:
+                    self.process_2 = 1
+                    self.process_time_2 = 0
+            elif out3 == "CHECK_3":
+                if self.process_2 == 1:
+                    self.process_2 = 0
+                    self.check_time_2 = 28
+                self.check_time_2 -= 1
+                self.process_mode_2 = 2
+                if self.check_time_2 == 0:
+                    self.process_2 = 1
+                    self.process_time_2 = 0
+            elif out3 == "CHECK_4":
+                if self.process_2 == 1:
+                    self.process_2 = 0
+                    self.check_time_2 = 28
+                self.check_time_2 -= 1
+                self.process_mode_2 = 3
+                if self.check_time_2 == 0:
+                    self.process_2 = 1
+                    self.process_time_2 = 0
+            elif out3 == "PROCESS":
+                self.process_time_2 += 1
+                if self.process_time_2 == 140:
+                    self.process_2 = 0
+                    self.check_time_2 = 28
 
             self.submission.loc[s, "Event_A"] = out1
             if self.submission.loc[s, "Event_A"] == "PROCESS":
@@ -165,18 +280,26 @@ class Genome:
             else:
                 self.submission.loc[s, "MOL_A"] = 0
 
-        # 23일간 MOL = 0
-        self.submission.loc[: 24 * 23, "MOL_A"] = 0
+            self.submission.loc[s, "Event_B"] = out3
+            if self.submission.loc[s, "Event_B"] == "PROCESS":
+                self.submission.loc[s, "MOL_B"] = out4
+            else:
+                self.submission.loc[s, "MOL_B"] = 0
 
-        # A 라인 = B 라인
-        self.submission.loc[:, "Event_B"] = self.submission.loc[:, "Event_A"]
-        self.submission.loc[:, "MOL_B"] = self.submission.loc[:, "MOL_A"]
+        # LINE A, B 23일간 MOL = 0
+        self.submission.loc[: 24 * 23, "MOL_A"] = 0
+        self.submission.loc[: 24 * 23, "MOL_B"] = 0
 
         # 변수 초기화
-        self.check_time = 28
-        self.process = 0
-        self.process_mode = 0
-        self.process_time = 0
+        self.check_time_1 = 28
+        self.process_1 = 0
+        self.process_mode_1 = 0
+        self.process_time_1 = 0
+
+        self.check_time_2 = 28
+        self.process_2 = 0
+        self.process_mode_2 = 0
+        self.process_time_2 = 0
 
         return self.submission
 
