@@ -86,6 +86,7 @@ class Genome:
         self.process_mode_2 = 0  # 생산 물품 번호 1~4, stop시 0
         self.process_time_2 = 0  # 생산시간이 얼마나 지속되었는지 검사, PROCESS +1, CHANGE +1, 최대 140
 
+        #stop status
         self.stop_time_1 = 192
         self.stop_time_2 = 192
 
@@ -101,7 +102,7 @@ class Genome:
             if self.process_time_1 > 98:
                 self.mask_1[:5] = True
         if self.process_1 == 2:
-            self.mask_1[:5] = True
+            self.mask_1[:4] = True
 
     def update_mask_2(self):
         self.mask_2[:] = False
@@ -111,9 +112,12 @@ class Genome:
             if self.check_time_2 < 28:
                 self.mask_2[self.process_mode_2] = True
         if self.process_2 == 1:
-            self.mask_2[4] = True
+            self.mask_2[5] = True
             if self.process_time_2 > 98:
-                self.mask_2[:4] = True
+                self.mask_2[:5] = True
+        if self.process_2 == 2:
+            self.mask_2[:4] = True
+            if self.stop_time == 
 
     def forward(self, inputs):
         # LINE_A_Event 신경망

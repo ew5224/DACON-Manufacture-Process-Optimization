@@ -234,7 +234,6 @@ class Simulator:
                     start_2 = False
             else:
                 start_2 = True
-
         return time, count
 
     def get_score(self, df):
