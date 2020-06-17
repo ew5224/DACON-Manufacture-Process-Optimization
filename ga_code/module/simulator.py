@@ -160,7 +160,6 @@ class Simulator:
     def subprocess(self, df):
         out = df.copy()
         column = "time"
-
         out.index = pd.to_datetime(out[column])
         out = out.drop([column], axis=1)
         out.index.name = column
@@ -181,7 +180,42 @@ class Simulator:
         df_rescale = df_rescale.fillna(0)
         return df_rescale
 
-    def cal_score(self, blk_diffs):
+    def f(self, x, a):
+        value = 0
+        if x < a:
+            value = 1 - (x / a)
+        else:
+            value = 0
+        return value
+
+    def cal_stop_time(self, df):
+        time = 0
+        count = 0
+        start_1 = True
+        start_2 = True
+
+        columns = ["Event_A", "MOL_A", "Event_B", "MOL_B"]
+        df_set = df[columns]
+
+        for i in df_set.index:
+            if df_set.loc[i, "Event_A"] == "STOP":
+                time += 1
+                if start_1:
+                    count += 1
+                    start_1 = False
+            else:
+                start_1 = True
+            if df_set.loc[i, "Event_B"] == "STOP":
+                time += 1
+                if start_2:
+                    count += 1
+                    start_2 = False
+            else:
+                start_2 = True
+        print(f"stop_time : {time}    count : {count}")
+        return time, count
+
+    def cal_score(self, blk_diffs, time, count):
         # Block Order Difference
         blk_diff_m = 0
         blk_diff_p = 0
@@ -191,10 +225,19 @@ class Simulator:
             if item > 0:
                 blk_diff_p = blk_diff_p + abs(item)
         score = blk_diff_m + blk_diff_p
+
+        N = 3255083
+
+        score = (
+            self.f(blk_diff_m, 10 * N) * 50
+            + self.f(blk_diff_p, 10 * N) * 20
+            + (10 * self.f(time, 4368)) / (1 + 0.1 * count)
+        )
         return score
 
     def get_score(self, df):
         df = self.subprocess(df)
+        time, count = self.cal_stop_time(df)
         out_1 = self.cal_schedule_part_1(df)
         out_2 = self.cal_schedule_part_2(df, line="A")
         out_3 = self.cal_schedule_part_2(df, line="B")
@@ -202,5 +245,5 @@ class Simulator:
         out = self.add_stock(out, self.stock)
         order = self.order_rescale(out, self.order)
         out, blk_diffs = self.cal_stock(out, order)
-        score = self.cal_score(blk_diffs)
+        score = self.cal_score(blk_diffs, time, count)
         return score, out

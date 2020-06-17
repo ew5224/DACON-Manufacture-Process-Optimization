@@ -49,51 +49,67 @@ class Genome:
         self.w8_2 = np.random.randn(self.hidden_layer3, output_len_2)
 
         # LINE_A_Event 종류
-        self.mask_1 = np.zeros([5], np.bool)  # 가능한 이벤트 검사용 마스크
+        self.mask_1 = np.zeros([6], np.bool)  # 가능한 이벤트 검사용 마스크
         self.event_map_1 = {
             0: "CHECK_1",
             1: "CHECK_2",
             2: "CHECK_3",
             3: "CHECK_4",
             4: "PROCESS",
+            5: "STOP",
         }
 
         # LINE_B_Event 종류
-        self.mask_2 = np.zeros([5], np.bool)  # 가능한 이벤트 검사용 마스크
+        self.mask_2 = np.zeros([6], np.bool)  # 가능한 이벤트 검사용 마스크
         self.event_map_2 = {
             0: "CHECK_1",
             1: "CHECK_2",
             2: "CHECK_3",
             3: "CHECK_4",
             4: "PROCESS",
+            5: "STOP",
         }
 
         # LINE_A_EVENT_STATUS
         self.check_time_1 = (
             28  # 28시간 검사를 완료했는지 검사, CHECK Event시 -1, processtime_time >=98 이면 28
         )
+        self.check_stop_time_1 = 192
         self.process_1 = 0  # 생산 가능 여부, 0 이면 28 시간 검사 필요
         self.process_mode_1 = 0  # 생산 물품 번호 1~4, stop시 0
         self.process_time_1 = 0  # 생산시간이 얼마나 지속되었는지 검사, PROCESS +1, CHANGE +1, 최대 140
+        self.stop_time_1 = 0  # 중단시간이 얼마나 지속되었는지 검사, 최대 192 (24*8)
 
         # LINE_B_EVENT_STATUS
         self.check_time_2 = (
             28  # 28시간 검사를 완료했는지 검사, CHECK Event시 -1, processtime_time >=98 이면 28
         )
+        self.check_stop_time_2 = 192
         self.process_2 = 0  # 생산 가능 여부, 0 이면 28 시간 검사 필요
         self.process_mode_2 = 0  # 생산 물품 번호 1~4, stop시 0
         self.process_time_2 = 0  # 생산시간이 얼마나 지속되었는지 검사, PROCESS +1, CHANGE +1, 최대 140
+        self.stop_time_2 = 0  # 중단시간이 얼마나 지속되었는지 검사, 최대 192 (24*8)
 
     def update_mask_1(self):
         self.mask_1[:] = False
         if self.process_1 == 0:
             if self.check_time_1 == 28:
                 self.mask_1[:4] = True
+                self.mask_1[5] = True
             if self.check_time_1 < 28:
                 self.mask_1[self.process_mode_1] = True
         if self.process_1 == 1:
             self.mask_1[4] = True
             if self.process_time_1 > 98:
+                self.mask_1[:5] = True
+                self.mask_1[-1] = True
+        if self.process_1 == 2:
+            if self.stop_time_1 >= 28:
+                self.mask_1[:4] = True
+                self.mask_1[-1] = True
+            if self.stop_time_1 < 28:
+                self.mask_1[-1] = True
+            if self.stop_time_1 == 192:
                 self.mask_1[:4] = True
 
     def update_mask_2(self):
@@ -101,11 +117,21 @@ class Genome:
         if self.process_2 == 0:
             if self.check_time_2 == 28:
                 self.mask_2[:4] = True
+                self.mask_2[5] = True
             if self.check_time_2 < 28:
                 self.mask_2[self.process_mode_2] = True
         if self.process_2 == 1:
             self.mask_2[4] = True
             if self.process_time_2 > 98:
+                self.mask_2[:5] = True
+                self.mask_2[-1] = True
+        if self.process_2 == 2:
+            if self.stop_time_2 >= 28:
+                self.mask_2[:4] = True
+                self.mask_2[-1] = True
+            if self.stop_time_2 < 28:
+                self.mask_2[-1] = True
+            if self.stop_time_2 == 192:
                 self.mask_2[:4] = True
 
     def forward(self, inputs):
@@ -133,6 +159,7 @@ class Genome:
         net = self.softmax(net)
         out2 = np.argmax(net)
         out2 /= 5
+        out2 += 0.2
 
         # LINE_B_Event 신경망
         net = np.matmul(inputs, self.w1_2)
@@ -158,11 +185,15 @@ class Genome:
         net = self.softmax(net)
         out4 = np.argmax(net)
         out4 /= 5
+        out4 += 0.2
 
         return out1, out2, out3, out4
 
     def sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
+
+    def relu(self, x):
+        return np.maximum(0, x)
 
     def softmax(self, x):
         return np.exp(x) / np.sum(np.exp(x), axis=0)
@@ -187,10 +218,11 @@ class Genome:
             ).reshape(-1)
             inputs = np.append(inputs, s % 24)
             out1, out2, out3, out4 = self.forward(inputs)
+            print(f"{s} = {out1} : {out2} | {out3} : {out4}")
 
             # LINE_A EVENT STATUS UPDATE
             if out1 == "CHECK_1":
-                if self.process_1 == 1:
+                if self.process_1 == 1 or self.process_1 == 2:
                     self.process_1 = 0
                     self.check_time_1 = 28
                 self.check_time_1 -= 1
@@ -199,7 +231,7 @@ class Genome:
                     self.process_1 = 1
                     self.process_time_1 = 0
             elif out1 == "CHECK_2":
-                if self.process_1 == 1:
+                if self.process_1 == 1 or self.process_1 == 2:
                     self.process_1 = 0
                     self.check_time_1 = 28
                 self.check_time_1 -= 1
@@ -208,7 +240,7 @@ class Genome:
                     self.process_1 = 1
                     self.process_time_1 = 0
             elif out1 == "CHECK_3":
-                if self.process_1 == 1:
+                if self.process_1 == 1 or self.process_1 == 2:
                     self.process_1 = 0
                     self.check_time_1 = 28
                 self.check_time_1 -= 1
@@ -217,7 +249,7 @@ class Genome:
                     self.process_1 = 1
                     self.process_time_1 = 0
             elif out1 == "CHECK_4":
-                if self.process_1 == 1:
+                if self.process_1 == 1 or self.process_1 == 2:
                     self.process_1 = 0
                     self.check_time_1 = 28
                 self.check_time_1 -= 1
@@ -230,10 +262,17 @@ class Genome:
                 if self.process_time_1 == 140:
                     self.process_1 = 0
                     self.check_time_1 = 28
+            elif out1 == "STOP":
+                if self.process_1 != 2:
+                    self.stop_time_1 = 0
+                self.stop_time_1 += 1
+                self.process_1 = 2
+                if self.stop_time_1 == 192:
+                    self.check_time_1 = 28
 
             # LINE_B EVENT STATUS UPDATE
             if out3 == "CHECK_1":
-                if self.process_2 == 1:
+                if self.process_2 == 1 or self.process_2 == 2:
                     self.process_2 = 0
                     self.check_time_2 = 28
                 self.check_time_2 -= 1
@@ -242,7 +281,7 @@ class Genome:
                     self.process_2 = 1
                     self.process_time_2 = 0
             elif out3 == "CHECK_2":
-                if self.process_2 == 1:
+                if self.process_2 == 1 or self.process_2 == 2:
                     self.process_2 = 0
                     self.check_time_2 = 28
                 self.check_time_2 -= 1
@@ -251,7 +290,7 @@ class Genome:
                     self.process_2 = 1
                     self.process_time_2 = 0
             elif out3 == "CHECK_3":
-                if self.process_2 == 1:
+                if self.process_2 == 1 or self.process_2 == 2:
                     self.process_2 = 0
                     self.check_time_2 = 28
                 self.check_time_2 -= 1
@@ -260,7 +299,7 @@ class Genome:
                     self.process_2 = 1
                     self.process_time_2 = 0
             elif out3 == "CHECK_4":
-                if self.process_2 == 1:
+                if self.process_2 == 1 or self.process_2 == 2:
                     self.process_2 = 0
                     self.check_time_2 = 28
                 self.check_time_2 -= 1
@@ -272,6 +311,13 @@ class Genome:
                 self.process_time_2 += 1
                 if self.process_time_2 == 140:
                     self.process_2 = 0
+                    self.check_time_2 = 28
+            elif out3 == "STOP":
+                if self.process_2 != 2:
+                    self.stop_time_2 = 0
+                self.stop_time_2 += 1
+                self.process_2 = 2
+                if self.stop_time_2 == 192:
                     self.check_time_2 = 28
 
             self.submission.loc[s, "Event_A"] = out1
