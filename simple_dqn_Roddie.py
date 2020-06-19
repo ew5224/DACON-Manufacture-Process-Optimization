@@ -22,8 +22,8 @@ class ReplayBuffer():
     def __init__(self, mem_size, input_dims):
         self.mem_size = mem_size
         self.mem_cntr =0    ## memory counter
-        self.state_memory = np.zeros(self.mem_size *input_dims, dtype= np.float32)
-        self.new_state_memory = np.zeros(self.mem_size * input_dims, dtype = np.float32)
+        self.state_memory = np.zeros(shape= (self.mem_size,input_dims), dtype= np.float32)
+        self.new_state_memory = np.zeros(shape=(self.mem_size , input_dims), dtype = np.float32)
         self.action_memory1 = np.zeros(self.mem_size, dtype = np.int32)
         #self.action_memory2 = np.zeros(self.mem_size, dtype =np.int32)
         self.reward_memory = np.zeros(self.mem_size, dtype =np.float32)
@@ -62,7 +62,7 @@ class ReplayBuffer():
         model.add(Flatten())
         model.add(Dense(64))
         model.add(Dense(324, activation = 'relu'))
-        model.compile(optimizer = Adam(learning_rate =lr),loss= 'mean_squared_error')
+        model.compile(optimizer = 'rmsprop',loss= 'mean_squared_error')
         
         return model
     
@@ -78,6 +78,7 @@ class Agent():
         self.gamma = gamma
         self.epsilon = epsilon
         self.eps_min = epsilon_end
+        self.eps_dec = epsilon_dec
         self.batch_size = batch_size
         self.model_file = fname
         self.memory = ReplayBuffer(mem_size,input_dims)
@@ -90,13 +91,13 @@ class Agent():
         if np.random.random() < self.epsilon:
             action1 = np.random.choice(self.action_space)
             
-        else : 
-            state = np.array([observation])
-            actions = self.q_eval.predict(state)
-         
-            action1 = np.argmax(actions)
- 
             
+        else : 
+            state = np.array([observation]).reshape(1,15,1)
+            actions = self.q_eval.predict(state)
+            print(state)
+            action1 = np.argmax(actions)
+           
 
         
         return action1
@@ -114,9 +115,11 @@ class Agent():
         
         q_target[batch_index, actions1] = rewards + self.gamma * np.max(q_next, axis=1)*dones
         
+        
+        
         self.q_eval.train_on_batch(states, q_target)
         self.epsilon =self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
-        print('run 1 time successful')
+       
     def save_model(self) :
         self.q_eval.save(self.model_file)
         

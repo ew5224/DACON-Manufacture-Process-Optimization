@@ -67,11 +67,13 @@ class DACON():
         state[6] = state[6] - (400 * f.isprocess(action1) * (state[13] == 4) + 400 * f.isprocess(action2) * (state[14] == 4))
         
         if hour == 18 :
-            state[3] = state[3] + self.order.loc[state[0]//24+ 1,'BLK_1']
-            state[4] = state[4] + self.order.loc[state[0]//24+ 1,'BLK_2']
-            state[5] = state[5] + self.order.loc[state[0]//24+ 1,'BLK_3']
-            state[6] = state[6] + self.order.loc[state[0]//24+ 1,'BLK_4']
-        
+            if state[0] // 24 < 90:
+                state[3] = state[3] + self.order.loc[state[0]//24+ 1,'BLK_1']
+                state[4] = state[4] + self.order.loc[state[0]//24+ 1,'BLK_2']
+                state[5] = state[5] + self.order.loc[state[0]//24+ 1,'BLK_3']
+                state[6] = state[6] + self.order.loc[state[0]//24+ 1,'BLK_4']
+
+            
         state[7] = state[7] + f.isprocess(action1) 
         state[8] = state[8] + f.ischeck(action1)
         state[9] = state[9] + f.ischange(action1)
@@ -108,16 +110,15 @@ class DACON():
         
         
         next_state = state
-        print('next_state :', type(next_state))
-        if state[0] == 2184 :
+        if state[0] == 2183 :
             check_done = True
         else :
             check_done = False
         
-        p = max(self.order.loc[(state[0] // 24):, 'BLK_1'].sum() - self.production[0], 0)+         max(self.order.loc[(state[0] // 24):, 'BLK_2'].sum() - self.production[1], 0)+         max(self.order.loc[(state[0] // 24):, 'BLK_3'].sum() - self.production[2], 0)+         max(self.order.loc[(state[0] // 24):, 'BLK_4'].sum() - self.production[3], 0)
+        p = max(self.order.loc[(state[0] // 24):, 'BLK_1'].sum() - self.production[0], 0)+ max(self.order.loc[min((state[0] // 24),90):, 'BLK_2'].sum() - self.production[1], 0)+ max(self.order.loc[min((state[0] // 24),90):, 'BLK_3'].sum() - self.production[2], 0)+  max(self.order.loc[min((state[0] // 24),90):, 'BLK_4'].sum() - self.production[3], 0)
          # 역누적 수요 -역누적 생산량 = 부족분
             
-        q = max(self.production[0] - self.order.loc[(self.state[0] // 24):, 'BLK_1'].sum(), 0)+         max(self.production[1] - self.order.loc[(self.state[0] // 24):, 'BLK_2'].sum(), 0)+         max(self.production[2] - self.order.loc[(self.state[0] // 24):, 'BLK_3'].sum(), 0)+         max(self.production[3] - self.order.loc[(self.state[0] // 24):, 'BLK_4'].sum(), 0) 
+        q = max(self.production[0] - self.order.loc[min((self.state[0] // 24),90):, 'BLK_1'].sum(), 0)+         max(self.production[1] - self.order.loc[min((self.state[0] // 24),90):, 'BLK_2'].sum(), 0)+         max(self.production[2] - self.order.loc[min((self.state[0] // 24),90):, 'BLK_3'].sum(), 0)+         max(self.production[3] - self.order.loc[min((self.state[0] // 24),90):, 'BLK_4'].sum(), 0) 
 
         self.checker2[0] = self.checker2[0] + f.ischange(action1) + f.ischange(action2)
         c = self.checker2[0]
@@ -127,7 +128,7 @@ class DACON():
         N = self.order.loc[(state[0]//24):, ['BLK_1','BLK_2','BLK_3','BLK_4']].sum().sum()
         M = state[0]
         
-        reward = 50 * f.F(p, 10*N) + 20 * f.F(q, 10*N) + 20 * f.F(c, M)  + 10 * f.F(s, M) 
+        reward = 50 * f.F(p, 10*N) + 20 * f.F(q, 10*N) + 20 * f.F(c, M)  #+ 10 * f.F(s, M) 
         
 
         return np.array(next_state) ,reward, check_done
