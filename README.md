@@ -2,9 +2,9 @@
 블럭 장난감 제조 공정 최적화 AI경진대회
 https://dacon.io/competitions/official/235612/overview/   
 
-***[최종 리더보드 순위] 14위***
-
-
+**[최종 리더보드 순위] 14위**
+ 
+ 
 ## Process Plan 
 - Team Genetic Algorithm   
  Solve problem by using Genetic Algorithm & Mathmatical Optimization   
